@@ -1,4 +1,4 @@
-@extends('admin.partials.master')
+@extends('manajemen.partials.master')
 @section('title', 'Dashboard Wali Kelas')
 
 @section('content')

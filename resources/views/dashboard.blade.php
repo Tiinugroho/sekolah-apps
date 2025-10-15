@@ -1,4 +1,4 @@
-@extends('admin.partials.master') {{-- Sesuaikan dengan nama layout utama Anda --}}
+@extends('manajemen.partials.master') {{-- Sesuaikan dengan nama layout utama Anda --}}
 
 {{-- Judul halaman dinamis berdasarkan peran --}}
 @section('title')
@@ -98,7 +98,7 @@
                         <p>Anda login sebagai <strong>{{ ucwords(str_replace('_', ' ', Auth::user()->role)) }}</strong>. Anda dapat memonitor data-data penting sekolah melalui menu di samping.</p>
                         @if (Auth::user()->role == 'super_admin')
                             <p>Anda memiliki akses penuh untuk mengelola semua data master, termasuk pengguna, kelas, dan jadwal.</p>
-                            <a href="{{ route('admin.users.index') }}" class="btn btn-primary">Kelola Pengguna &rarr;</a>
+                            <a href="{{ route('manajemen.users.index') }}" class="btn btn-primary">Kelola Pengguna &rarr;</a>
                         @else
                             <p>Anda memiliki akses untuk melihat (read-only) data-data sekolah.</p>
                         @endif

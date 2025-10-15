@@ -24,8 +24,6 @@ class LoginRequest extends FormRequest
         ];
     }
 
-    // app/Http/Requests/Auth/LoginRequest.php
-
     /**
      * Attempt to authenticate the request's credentials.
      *
@@ -36,37 +34,36 @@ class LoginRequest extends FormRequest
         $this->ensureIsNotRateLimited();
 
         $loginInput = $this->input('login');
+        $password = $this->input('password');
+        $remember = $this->boolean('remember');
 
-        // ======================= LOGIKA YANG SUDAH DIPERBAIKI =======================
-        // Tentukan field berdasarkan format input (email, nip, atau nisn)
-        if (filter_var($loginInput, FILTER_VALIDATE_EMAIL)) {
-            $fieldType = 'email';
-        } elseif (is_numeric($loginInput)) {
-            // NISN standar memiliki 10 digit.
-            // NIP standar memiliki 18 digit.
-            // Kita bisa gunakan panjang string untuk membedakannya.
-            if (strlen($loginInput) == 10) {
-                $fieldType = 'nisn';
-            } else {
-                // Asumsikan angka dengan panjang lain (terutama 18) adalah NIP.
-                $fieldType = 'nip';
-            }
-        } else {
-            // Jika bukan email atau angka, biarkan default ke 'email' agar gagal dengan aman.
-            $fieldType = 'email';
+        // ======================= LOGIKA BARU TANPA BATASAN PANJANG =======================
+
+        // Coba otentikasi dengan email terlebih dahulu
+        if (Auth::attempt(['email' => $loginInput, 'password' => $password], $remember)) {
+            RateLimiter::clear($this->throttleKey());
+            return; // Sukses, hentikan proses
         }
 
-        // Coba otentikasi menggunakan field yang sudah ditentukan
-        if (!Auth::attempt([$fieldType => $loginInput, 'password' => $this->input('password')], $this->boolean('remember'))) {
-            RateLimiter::hit($this->throttleKey());
-
-            throw ValidationException::withMessages([
-                'login' => trans('auth.failed'), // 'auth.failed' adalah pesan "These credentials..."
-            ]);
+        // Jika gagal, dan jika inputnya numerik, coba otentikasi dengan NIP
+        if (is_numeric($loginInput) && Auth::attempt(['nip' => $loginInput, 'password' => $password], $remember)) {
+            RateLimiter::clear($this->throttleKey());
+            return; // Sukses, hentikan proses
         }
+
+        // Jika masih gagal, dan jika inputnya numerik, coba otentikasi dengan NISN
+        if (is_numeric($loginInput) && Auth::attempt(['nisn' => $loginInput, 'password' => $password], $remember)) {
+            RateLimiter::clear($this->throttleKey());
+            return; // Sukses, hentikan proses
+        }
+
+        // Jika SEMUA percobaan di atas gagal, maka tampilkan error.
+        RateLimiter::hit($this->throttleKey());
+
+        throw ValidationException::withMessages([
+            'login' => trans('auth.failed'), // 'auth.failed' adalah pesan "These credentials..."
+        ]);
         // ======================= AKHIR PERBAIKAN =======================
-
-        RateLimiter::clear($this->throttleKey());
     }
 
     public function ensureIsNotRateLimited(): void

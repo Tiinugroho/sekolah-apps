@@ -14,14 +14,14 @@ class UserSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. BUAT PENGGUNA DENGAN PERAN TETAP (ADMIN, KEPSEK, GURU, STAFF)
+        // 1. Buat pengguna statis (Admin, Kepsek, Guru, dll.)
         $this->createStaticUsers();
 
-        // 2. TETAPKAN WALI KELAS BERDASARKAN DATA SK
+        // 2. Tetapkan Wali Kelas
         $this->assignWaliKelas();
 
-        // 3. PERBAIKAN: BUAT 18 MURID UNTUK SETIAP KELAS YANG ADA
-        $this->createStudentsForEachClass(18);
+        // 3. Buat siswa dengan nama dan jumlah acak untuk setiap kelas
+        $this->createStudentsForEachClass(20, 32); // Min 20, Max 32 siswa per kelas
     }
 
     /**
@@ -71,8 +71,11 @@ class UserSeeder extends Seeder
             ['name' => 'Debby Atria, S.Pd', 'nip' => '199702072024212035'],
             ['name' => 'Maharani, S.Pd', 'nip' => '199305032023212043'],
             ['name' => 'Erna Setyaningsih, S.Pd', 'nip' => '19871025202421003'],
-            // Tambahkan NIP unik untuk guru yang tidak ada NIP-nya di SK
             ['name' => 'Endah Neneng Kristiana, SE', 'nip' => '199201012023012001'],
+            ['name' => 'Muhibud, S. Kom', 'nip' => '198306202011021001'],
+            ['name' => 'Sri Susanti. STP', 'nip' => '196803232014062002'], // Guru Matematika dari SK
+            ['name' => 'Yulita Hutahaean, S.Pd.', 'nip' => '199507202020122011'], // Guru Sosiologi dari SK
+            ['name' => 'Sulis Setiowati,SH', 'nip' => '197709222023212007'], // Guru PKN dari SK
         ];
         foreach ($gurus as $guru) {
             User::firstOrCreate(['nip' => $guru['nip']], [
@@ -89,17 +92,19 @@ class UserSeeder extends Seeder
     private function assignWaliKelas(): void
     {
         $penugasan = [
-            '198302152023212022' => 'X 1',
-            '199008202024212045' => 'X 2',
-            '199201012023012001' => 'X 3',
-            '198003302023211005' => 'X 4',
-            '199508142023212032' => 'X 5',
+            '198302152023212022' => 'X MIPA 1',
+            '199008202024212045' => 'X MIPA 2',
+            '199201012023012001' => 'X IPS 1',
+            '198003302023211005' => 'X IPS 2',
+
             '197809142014062003' => 'XI MIPA 1',
             '197106122007012008' => 'XI MIPA 2',
             '199702072024212035' => 'XI IPS 1',
             '199305032023212043' => 'XI IPS 2',
+
             '198106202010012018' => 'XII MIPA 1',
-            '197102152005012005' => 'XII IPA 2',
+            '199508142023212032' => 'XII MIPA 2',
+            '197102152005012005' => 'XII IPS 1',
             '197706302008012009' => 'XII IPS 2',
         ];
 
@@ -115,15 +120,25 @@ class UserSeeder extends Seeder
     /**
      * Membuat sejumlah siswa untuk setiap kelas yang ada di database.
      */
-    private function createStudentsForEachClass(int $numberOfStudents): void
+    private function createStudentsForEachClass(int $min, int $max): void
     {
+        $firstNames = ['Budi', 'Ani', 'Citra', 'Dewi', 'Eko', 'Fajar', 'Gita', 'Hadi', 'Indah', 'Joko', 'Kartika', 'Lia', 'Mega', 'Nadia', 'Putra', 'Rina', 'Sari', 'Tono'];
+        $lastNames = ['Prasetyo', 'Wijaya', 'Susanto', 'Kusuma', 'Lestari', 'Nugroho', 'Wahyuni', 'Setiawan', 'Saputra', 'Handayani'];
+        
         $allKelas = Kelas::all();
 
         foreach ($allKelas as $kelas) {
+            // PERBAIKAN: Jumlah siswa acak untuk setiap kelas
+            $numberOfStudents = rand($min, $max);
+
             for ($i = 1; $i <= $numberOfStudents; $i++) {
-                // Buat nama dan nisn yang unik
-                $studentName = 'Siswa ' . $kelas->nama_kelas . ' ' . $i;
-                $studentNisn = '00' . ($kelas->id * 100 + $i); // Contoh: 00101, 00102, 00201, dst.
+                // PERBAIKAN: Nama siswa acak
+                $randomFirstName = $firstNames[array_rand($firstNames)];
+                $randomLastName = $lastNames[array_rand($lastNames)];
+                $studentName = $randomFirstName . ' ' . $randomLastName;
+                
+                // Buat NISN yang unik
+                $studentNisn = '00' . str_pad($kelas->id, 2, '0', STR_PAD_LEFT) . str_pad($i, 2, '0', STR_PAD_LEFT);
 
                 User::firstOrCreate(['nisn' => $studentNisn], [
                     'name' => $studentName,
@@ -133,5 +148,6 @@ class UserSeeder extends Seeder
                 ]);
             }
         }
+        $this->command->info('Siswa dengan nama dan jumlah acak berhasil dibuat untuk setiap kelas.');
     }
 }

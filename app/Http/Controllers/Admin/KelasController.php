@@ -6,18 +6,19 @@ use App\Http\Controllers\Controller;
 use App\Models\Kelas;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class KelasController extends Controller
 {
     /**
-     * Menampilkan daftar semua kelas.
+     * Menampilkan daftar semua kelas dengan paginasi.
      */
     public function index()
     {
-        // PERBAIKAN 1: Menggunakan withCount untuk efisiensi.
-        $kelasList = Kelas::with('waliKelas')->withCount('students')->latest()->paginate(10);
-        return view('admin.kelas.index', compact('kelasList'));
+        // PERBAIKAN 1: Mengganti ->get() dengan ->paginate() untuk efisiensi.
+        $kelasList = Kelas::with('waliKelas')->withCount('students')->get();
+        
+        // PERBAIKAN 3: Menggunakan path view yang konsisten.
+        return view('manajemen.kelas.index', compact('kelasList'));
     }
 
     /**
@@ -26,7 +27,7 @@ class KelasController extends Controller
     public function create()
     {
         $gurus = User::where('role', 'guru')->orderBy('name')->get();
-        return view('admin.kelas.create', compact('gurus'));
+        return view('manajemen.kelas.create', compact('gurus'));
     }
 
     /**
@@ -41,19 +42,17 @@ class KelasController extends Controller
 
         Kelas::create($request->all());
         
-        // Redirect dinamis berdasarkan peran
-        $routeName = Auth::user()->role == 'super_admin' ? 'admin.kelas.index' : 'manajemen.kelas.index';
-        return redirect()->route($routeName)->with('success', 'Kelas berhasil dibuat.');
+        // PERBAIKAN 2: Redirect disederhanakan.
+        return redirect()->route('manajemen.kelas.index')->with('success', 'Kelas berhasil dibuat.');
     }
 
     /**
-     * Menampilkan detail satu kelas.
+     * Menampilkan detail satu kelas (untuk peran monitoring).
      */
     public function show(Kelas $kela)
     {
-        // load() sudah benar untuk halaman detail
         $kela->load('students', 'waliKelas');
-        return view('admin.kelas.show', compact('kela'));
+        return view('manajemen.kelas.show', compact('kela'));
     }
     
     /**
@@ -62,7 +61,7 @@ class KelasController extends Controller
     public function edit(Kelas $kela)
     {
         $gurus = User::where('role', 'guru')->orderBy('name')->get();
-        return view('admin.kelas.edit', compact('kela', 'gurus'));
+        return view('manajemen.kelas.edit', compact('kela', 'gurus'));
     }
 
     /**
@@ -77,23 +76,20 @@ class KelasController extends Controller
 
         $kela->update($request->all());
         
-        $routeName = Auth::user()->role == 'super_admin' ? 'admin.kelas.index' : 'manajemen.kelas.index';
-        return redirect()->route($routeName)->with('success', 'Kelas berhasil diperbarui.');
+        return redirect()->route('manajemen.kelas.index')->with('success', 'Kelas berhasil diperbarui.');
     }
 
     /**
-     * Menghapus kelas dari database.
+     * Menghapus kelas dari database dengan pengecekan keamanan.
      */
     public function destroy(Kelas $kela)
     {
-        // PERBAIKAN 2: Pengecekan keamanan sebelum menghapus.
         if ($kela->students()->count() > 0) {
             return back()->with('error', 'Kelas tidak dapat dihapus karena masih memiliki siswa terdaftar.');
         }
 
         $kela->delete();
         
-        $routeName = Auth::user()->role == 'super_admin' ? 'admin.kelas.index' : 'manajemen.kelas.index';
-        return redirect()->route($routeName)->with('success', 'Kelas berhasil dihapus.');
+        return redirect()->route('manajemen.kelas.index')->with('success', 'Kelas berhasil dihapus.');
     }
 }

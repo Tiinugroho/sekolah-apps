@@ -71,7 +71,7 @@
     {{-- CSS untuk gambar background --}}
     <style>
         .bg-login-image {
-            background: url('{{ asset('img/school-bg.jpg') }}'); /* Ganti dengan gambar sekolah Anda */
+            background: url('{{ asset('img/img-1.jpg') }}'); /* Ganti dengan gambar sekolah Anda */
             background-position: center;
             background-size: cover;
         }

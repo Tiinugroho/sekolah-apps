@@ -15,8 +15,19 @@ class JadwalController extends Controller
 
     public function index()
     {
-        $jadwals = Jadwal::with('kelas', 'teacher', 'mataPelajaran')->latest()->paginate(10);
-        return view('admin.jadwal.index', compact('jadwals'));
+        // 1. Ambil semua jadwal, bukan paginasi
+        // 2. Urutkan berdasarkan jam mulai agar jadwal dalam satu hari teratur
+        // 3. Kelompokkan hasilnya berdasarkan kolom 'hari'
+        $jadwalsByDay = Jadwal::with('kelas', 'teacher', 'mataPelajaran')
+                            ->orderBy('jam_mulai')
+                            ->get()
+                            ->groupBy('hari');
+
+        // Kirim data yang sudah dikelompokkan dan juga daftar hari ke view
+        return view('manajemen.jadwal.index', [
+            'jadwalsByDay' => $jadwalsByDay,
+            'days' => $this->days,
+        ]);
     }
 
     public function create()
@@ -27,7 +38,7 @@ class JadwalController extends Controller
             'mapels' => MataPelajaran::orderBy('nama_mapel')->get(),
             'days' => $this->days,
         ];
-        return view('admin.jadwal.create', $data);
+        return view('manajemen.jadwal.create', $data);
     }
 
     public function store(Request $request)
@@ -44,7 +55,6 @@ class JadwalController extends Controller
             'jam_selesai' => 'required|date_format:H:i|after:jam_mulai',
         ]);
 
-        // LOGIKA ANTI-TABRAKAN
         if ($this->isScheduleConflict($validated)) {
             return back()->withInput()->with('error', 'Jadwal bertabrakan! Guru atau Kelas sudah memiliki jadwal di waktu yang sama.');
         }
@@ -56,7 +66,7 @@ class JadwalController extends Controller
     public function show(Jadwal $jadwal)
     {
         $jadwal->load('kelas', 'teacher', 'mataPelajaran');
-        return view('admin.jadwal.show', compact('jadwal'));
+        return view('manajemen.jadwal.show', compact('jadwal'));
     }
 
     public function edit(Jadwal $jadwal)
@@ -68,16 +78,24 @@ class JadwalController extends Controller
             'mapels' => MataPelajaran::orderBy('nama_mapel')->get(),
             'days' => $this->days,
         ];
-        return view('admin.jadwal.edit', $data);
+        return view('manajemen.jadwal.edit', $data);
     }
 
     public function update(Request $request, Jadwal $jadwal)
     {
+        // PERBAIKAN: Menambahkan validasi yang sebelumnya kosong
         $validated = $request->validate([
-            // ... (validasi sama seperti di store)
+            'kelas_id' => 'required|exists:kelas,id',
+            'teacher_id' => 'required|exists:users,id',
+            'mata_pelajaran_id' => 'required|exists:mata_pelajarans,id',
+            'tahun_ajaran' => 'required|string|max:9',
+            'semester' => 'required|integer|in:1,2',
+            'kktp' => 'required|integer|min:0|max:100',
+            'hari' => 'required|in:' . implode(',', $this->days),
+            'jam_mulai' => 'required|date_format:H:i',
+            'jam_selesai' => 'required|date_format:H:i|after:jam_mulai',
         ]);
 
-        // LOGIKA ANTI-TABRAKAN (dengan pengecualian untuk jadwal yang sedang diedit)
         if ($this->isScheduleConflict($validated, $jadwal->id)) {
             return back()->withInput()->with('error', 'Jadwal bertabrakan! Guru atau Kelas sudah memiliki jadwal di waktu yang sama.');
         }
@@ -89,15 +107,12 @@ class JadwalController extends Controller
     public function destroy(Jadwal $jadwal)
     {
         if ($jadwal->lingkupMateris()->exists()) {
-             return back()->with('error', 'Jadwal tidak dapat dihapus karena sudah memiliki data penilaian.');
+             return back()->with('error', 'Jadwal tidak dapat dihapus karena sudah memiliki data penilaian terkait.');
         }
         $jadwal->delete();
         return redirect()->route('manajemen.jadwal.index')->with('success', 'Jadwal berhasil dihapus.');
     }
 
-    /**
-     * Helper function untuk memeriksa tabrakan jadwal.
-     */
     private function isScheduleConflict(array $data, int $exceptId = null): bool
     {
         $query = Jadwal::where('hari', $data['hari'])

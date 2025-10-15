@@ -5,21 +5,29 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\MataPelajaran;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class MataPelajaranController extends Controller
 {
+    /**
+     * Menampilkan daftar semua mata pelajaran.
+     */
     public function index()
     {
-        $mapels = MataPelajaran::latest()->paginate(10);
-        return view('admin.mapel.index', compact('mapels'));
+        $mapels = MataPelajaran::get();
+        return view('manajemen.mapel.index', compact('mapels'));
     }
 
+    /**
+     * Menampilkan form untuk membuat mata pelajaran baru.
+     */
     public function create()
     {
-        return view('admin.mapel.create');
+        return view('manajemen.mapel.create');
     }
 
+    /**
+     * Menyimpan mata pelajaran baru ke database.
+     */
     public function store(Request $request)
     {
         $request->validate([
@@ -31,16 +39,25 @@ class MataPelajaranController extends Controller
         return redirect()->route('manajemen.mapel.index')->with('success', 'Mata Pelajaran berhasil ditambahkan.');
     }
 
+    /**
+     * Menampilkan detail satu mata pelajaran (untuk Kepala Sekolah).
+     */
     public function show(MataPelajaran $mapel)
     {
-        return view('admin.mapel.show', compact('mapel'));
+        return view('manajemen.mapel.show', compact('mapel'));
     }
 
+    /**
+     * Menampilkan form untuk mengedit mata pelajaran.
+     */
     public function edit(MataPelajaran $mapel)
     {
-        return view('admin.mapel.edit', compact('mapel'));
+        return view('manajemen.mapel.edit', compact('mapel'));
     }
 
+    /**
+     * Memperbarui data mata pelajaran di database.
+     */
     public function update(Request $request, MataPelajaran $mapel)
     {
         $request->validate([
@@ -52,8 +69,16 @@ class MataPelajaranController extends Controller
         return redirect()->route('manajemen.mapel.index')->with('success', 'Mata Pelajaran berhasil diperbarui.');
     }
 
+    /**
+     * Menghapus mata pelajaran dari database.
+     */
     public function destroy(MataPelajaran $mapel)
     {
+        // Keamanan: Cek apakah mapel sudah digunakan di jadwal
+        if ($mapel->jadwals()->exists()) {
+            return back()->with('error', 'Mata Pelajaran tidak dapat dihapus karena sudah digunakan dalam jadwal.');
+        }
+
         $mapel->delete();
         return redirect()->route('manajemen.mapel.index')->with('success', 'Mata Pelajaran berhasil dihapus.');
     }
